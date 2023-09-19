@@ -17,6 +17,7 @@ namespace SocketGameServer
 		private Socket? socket = null;
 		private List<Socket> listenList = new List<Socket>();
 		private Dictionary<Socket, List<byte>> connectedClients = new Dictionary<Socket, List<byte>>();
+		private Dictionary<Socket, int> connectedClientsUniqueID = new Dictionary<Socket, int>();
 		private List<Socket> cloneClientConnections = new List<Socket>();	
 
 		public int ConnectedClientCount
@@ -80,7 +81,10 @@ namespace SocketGameServer
 			{
 				Socket newClient = listen.Accept();
 				connectedClients.Add(newClient, new List<byte>());
-				Console.WriteLine("Connected new client");
+				connectedClientsUniqueID.Add(newClient, newClient.GetHashCode());
+				byte[] hashByte = BitConverter.GetBytes(newClient.GetHashCode());
+				newClient.Send(hashByte);
+				Console.WriteLine($"Connected new client : {newClient.GetHashCode()}");
 			}
 
 			if (connectedClients.Keys.Count == 0) return;
@@ -92,6 +96,7 @@ namespace SocketGameServer
 				{
 					client.Close();
 					connectedClients.Remove(client);
+					connectedClientsUniqueID.Remove(client);
 					Console.WriteLine("Remove disconnected client : Clone()");
 					continue;
 				}
@@ -134,14 +139,15 @@ namespace SocketGameServer
 						byte[] readBytes = packetBytes.ToArray();
 
 						Bullet bullet = Bullet.FromByteArray(readBytes);
-						Console.WriteLine($"{bullet.GetType()}/{bullet.name} : {bullet.position}");
+						Console.WriteLine($"{bullet.GetType()}/{connectedClientsUniqueID[client]} : {bullet.position}");
 						
 						int count = 0;
 						foreach(Socket otherClient in connectedClients.Keys)
 						{
 							if (otherClient == client) continue;
-							otherClient.Send(receivedBytes);
-							Console.WriteLine($"Send to other client...{count}");
+							otherClient.Send(new byte[] { (byte)readBytes.Length });
+							otherClient.Send(readBytes);
+							Console.WriteLine($"Send to other client...{connectedClientsUniqueID[otherClient]}");
 							count++;
 						}
 					}
