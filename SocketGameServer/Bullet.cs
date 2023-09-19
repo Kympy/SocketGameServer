@@ -16,7 +16,7 @@ namespace SocketGameServer
 				{
 
 					Bullet bullet = new Bullet();
-					bullet.name = br.ReadString();
+
 					bullet.position.X = br.ReadSingle();
 					bullet.position.Y = br.ReadSingle();
 					bullet.position.Z = br.ReadSingle();
@@ -32,7 +32,6 @@ namespace SocketGameServer
 			{
 				using (BinaryWriter bw = new BinaryWriter(ms))
 				{
-					bw.Write(bullet.name);
 					bw.Write(bullet.position.X);
 					bw.Write(bullet.position.Y);
 					bw.Write(bullet.position.Z);

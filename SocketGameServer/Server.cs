@@ -11,7 +11,7 @@ namespace SocketGameServer
 {
 	internal class Server : Singleton<Server>
 	{
-		private const int MaxBackLog = 2;
+		private const int MaxBackLog = 4;
 		private const int PortNumber = 8000;
 
 		private Socket? socket = null;
@@ -109,49 +109,59 @@ namespace SocketGameServer
 			Socket.Select(cloneClientConnections, null, null, 1000);
 			foreach (var client in cloneClientConnections)
 			{
-				if (client.Connected == false)
+				if (client.Poll(1, SelectMode.SelectRead) == true && client.Available == 0)
 				{
 					client.Close();
 					connectedClients.Remove(client);
-					Console.Write("Remove disconnected client : Receive()");
+					connectedClientsUniqueID.Remove(client);
+					Console.WriteLine("Remove disconnected client : Clone()");
 					continue;
 				}
 
 				byte[] receivedBytes = new byte[512];
-				List<byte> buffer = connectedClients[client];
+				//List<byte> buffer = connectedClients[client];
 
 				int read = client.Receive(receivedBytes);
-				for (int i = 0; i < read; i++)
+				//for (int i = 0; i < read; i++)
+				//{
+				//	buffer.Add(receivedBytes[i]);
+				//}
+				Bullet bullet = Bullet.FromByteArray(receivedBytes);
+				Console.WriteLine($"{bullet.GetType()}=>{connectedClientsUniqueID[client]} : {bullet.position}");
+
+				foreach (Socket otherClient in cloneClientConnections)
 				{
-					buffer.Add(receivedBytes[i]);
+					if (otherClient == client) continue;
+					otherClient.Send(receivedBytes);
+					otherClient.Send(BitConverter.GetBytes(connectedClientsUniqueID[client]));
+					Console.WriteLine($"Send to other client...{connectedClientsUniqueID[otherClient]}");
 				}
 
-				while (buffer.Count > 0)
-				{
-					int packetDataLength = buffer[0];
+				//while (buffer.Count > 0)
+				//{
+				//	int packetDataLength = buffer[0];
 
-					if (buffer.Count > packetDataLength)
-					{
-						List<byte> packetBytes = new List<byte>(buffer);
-						packetBytes.RemoveRange(packetDataLength, packetBytes.Count - (packetDataLength + 1));
-						packetBytes.RemoveRange(0, 1);
-						buffer.RemoveRange(0, packetDataLength + 1);
-						byte[] readBytes = packetBytes.ToArray();
+				//	if (buffer.Count > packetDataLength)
+				//	{
+				//		List<byte> packetBytes = new List<byte>(buffer);
+				//		packetBytes.RemoveRange(packetDataLength, packetBytes.Count - (packetDataLength + 1));
+				//		packetBytes.RemoveRange(0, 1);
+				//		buffer.RemoveRange(0, packetDataLength + 1);
+				//		byte[] readBytes = packetBytes.ToArray();
 
-						Bullet bullet = Bullet.FromByteArray(readBytes);
-						Console.WriteLine($"{bullet.GetType()}/{connectedClientsUniqueID[client]} : {bullet.position}");
+				//		Bullet bullet = Bullet.FromByteArray(readBytes);
+				//		Console.WriteLine($"{bullet.GetType()}/{connectedClientsUniqueID[client]} : {bullet.position}");
 						
-						int count = 0;
-						foreach(Socket otherClient in connectedClients.Keys)
-						{
-							if (otherClient == client) continue;
-							otherClient.Send(new byte[] { (byte)readBytes.Length });
-							otherClient.Send(readBytes);
-							Console.WriteLine($"Send to other client...{connectedClientsUniqueID[otherClient]}");
-							count++;
-						}
-					}
-				}
+				//		int count = 0;
+				//		foreach(Socket otherClient in connectedClients.Keys)
+				//		{
+				//			if (otherClient == client) continue;
+				//			otherClient.Send(readBytes);
+				//			Console.WriteLine($"Send to other client...{connectedClientsUniqueID[otherClient]}");
+				//			count++;
+				//		}
+				//	}
+				//}
 			}
 		}
 	}

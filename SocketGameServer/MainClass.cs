@@ -29,7 +29,7 @@ namespace SocketGameServer
 						break;
 					}
 				}
-				if ((Environment.TickCount & Int32.MaxValue) - lastTick < 1000)
+				if ((Environment.TickCount & Int32.MaxValue) - lastTick < 100)
 				{
 					continue;
 				}
